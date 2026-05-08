@@ -1,0 +1,14 @@
+1. signup/sign in + social login using better auth
+2. set token limit daily
+3. use redux for repetative queries
+4. add research functionality
+5. add subscription system and pricing 
+6. add news-letter for getting updates
+7. add community functionality (posting, commenting)
+8. improve ui 
+
+finally deployment 
+
+change the ton from islamic to more generic like all rigion
+allow researching on anything like negative or positive etc.
+
