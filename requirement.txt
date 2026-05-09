@@ -1,14 +1,555 @@
-1. signup/sign in + social login using better auth
-2. set token limit daily
-3. use redux for repetative queries
-4. add research functionality
-5. add subscription system and pricing 
-6. add news-letter for getting updates
-7. add community functionality (posting, commenting)
-8. improve ui 
+═══════════════════════════════════════════════════════════════════════════
+                        THE SCOLAR - ENHANCED REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════
 
-finally deployment 
+## PHASE 1: FOUNDATION & AUTHENTICATION [CRITICAL]
 
-change the ton from islamic to more generic like all rigion
-allow researching on anything like negative or positive etc.
+### 1.1 User Authentication System
+├─ Implement Better Auth integration
+│  ├─ Email/Password authentication
+│  ├─ Social login (Google, GitHub, optional: Microsoft, Apple)
+│  ├─ Session management & refresh tokens
+│  ├─ Password reset flow with email verification
+│  ├─ Email verification on signup
+│  └─ Security: Rate limiting on auth endpoints
+├─ Setup Prisma ORM
+│  ├─ Configure PostgreSQL connection
+│  ├─ Create User model (email, password, name, profile, verified)
+│  ├─ Create Account model (social login data)
+│  ├─ Create Session model (session tracking)
+│  ├─ Create VerificationToken model (email verification)
+│  ├─ Setup migrations pipeline
+│  └─ Add database seeding for dev environment
+├─ Create User Provider (React Context)
+│  ├─ Fetch user session on app load
+│  ├─ Store in Context state
+│  ├─ Export useUser() hook
+│  ├─ Auto-logout on token expiry
+│  └─ Hydration handling for SSR
+└─ API Endpoints
+   ├─ POST /api/auth/register
+   ├─ POST /api/auth/login
+   ├─ POST /api/auth/logout
+   ├─ POST /api/auth/verify-email
+   ├─ POST /api/auth/forgot-password
+   ├─ POST /api/auth/reset-password
+   ├─ GET /api/auth/session
+   └─ POST /api/auth/refresh
+
+---
+
+## PHASE 2: CORE FEATURES [HIGH PRIORITY]
+
+### 2.1 Daily Token Limit System
+├─ Database Schema
+│  ├─ Create ApiUsage model (userId, date, tokensUsed, tokensLimit)
+│  ├─ Add index on userId + date for fast queries
+│  └─ Track: research tokens, community actions tokens
+├─ Token Tracking
+│  ├─ Track each API call consumption
+│  ├─ Reset counters daily at 00:00 UTC
+│  ├─ Support different token costs per action (research=10, post=1)
+│  └─ Add tier-based limits (free: 100, pro: 1000, premium: unlimited)
+├─ Middleware & Validation
+│  ├─ Check remaining tokens before each action
+│  ├─ Return 429 (Too Many Requests) when limit exceeded
+│  ├─ Include remaining tokens in response headers
+│  └─ Show user-friendly error messages
+├─ Daily Reset Job
+│  ├─ Use node-cron or cloud scheduler
+│  ├─ Atomic database operations
+│  └─ Logging for monitoring
+└─ Frontend Display
+   ├─ Show token usage dashboard
+   ├─ Display reset time countdown
+   ├─ Warn at 75% usage, block at 100%
+   └─ Suggest subscription upgrade
+
+### 2.2 Redux Setup for Repetitive Queries
+├─ Store Architecture
+│  ├─ Configure Redux store with slices
+│  ├─ Setup Redux DevTools for development
+│  ├─ Configure persist middleware for caching
+│  └─ Setup error handling middleware
+├─ Redux Slices
+│  ├─ authSlice (user, isAuthenticated, isLoading)
+│  ├─ usageSlice (dailyTokens, remainingTokens, lastReset)
+│  ├─ researchSlice (history, cache, filters)
+│  ├─ communitySlice (posts, comments, userPosts)
+│  └─ subscriptionSlice (tier, features, renewalDate)
+├─ Thunks for API Calls
+│  ├─ fetchUser thunk
+│  ├─ fetchUsageStatus thunk
+│  ├─ fetchResearchHistory thunk
+│  ├─ fetchCommunityPosts thunk
+│  └─ Add error handling & loading states
+└─ Performance
+   ├─ Implement selectors for memoized data
+   ├─ Cache API responses with TTL
+   ├─ Pagination support for large datasets
+   └─ Lazy load on demand
+
+### 2.3 Research Functionality
+├─ Database Schema
+│  ├─ Create Research model (userId, query, result, tokensUsed, createdAt, tags)
+│  ├─ Add full-text search index on query
+│  ├─ Add userId index for user-specific queries
+│  └─ Create ResearchCategory model (optional: pre-defined categories)
+├─ Research Engine
+│  ├─ Integrate with AI/LLM API (OpenAI, Claude, LLaMA, or custom)
+│  ├─ Support streaming responses
+│  ├─ Timeout handling (max 30s per research)
+│  ├─ Error recovery & retry logic
+│  └─ Token consumption tracking
+├─ Generic Tone Implementation
+│  ├─ Remove all islamic-specific references
+│  ├─ Update tone to be inclusive & neutral
+│  ├─ Support all religions/beliefs/philosophies
+│  ├─ Allow researching any topic (positive, negative, controversial)
+│  ├─ Add content moderation (optional: filter hate speech only)
+│  └─ Add disclaimer: "For educational purposes"
+├─ API Endpoints
+│  ├─ POST /api/research (create new research)
+│  ├─ GET /api/research (list user's research with pagination)
+│  ├─ GET /api/research/:id (get specific research)
+│  ├─ DELETE /api/research/:id (delete research)
+│  ├─ GET /api/research/search?q=query (search research)
+│  └─ POST /api/research/:id/save (save to favorites)
+├─ Frontend UI
+│  ├─ Research input form with suggestions
+│  ├─ Real-time streaming response display
+│  ├─ Search & filter past research
+│  ├─ Export research as PDF/TXT
+│  ├─ Share research with community
+│  └─ Bookmark favorite research
+└─ Monitoring
+   └─ Track: research count, avg tokens used, popular queries
+
+---
+
+## PHASE 3: ADVANCED FEATURES [MEDIUM PRIORITY]
+
+### 3.1 Subscription System & Pricing
+├─ Database Schema
+│  ├─ Create Subscription model (userId, tier, status, renewalDate, cancelledAt)
+│  ├─ Create SubscriptionTier model (name, price, features, tokenLimit)
+│  ├─ Create Payment model (userId, amount, status, provider, transactionId)
+│  ├─ Create Invoice model (for billing history)
+│  └─ Create Feature model (name, tier, description)
+├─ Subscription Tiers
+│  ├─ Free Tier
+│  │  ├─ 100 tokens/day
+│  │  ├─ Basic research (5 queries/day)
+│  │  ├─ Community read-only
+│  │  ├─ No priority support
+│  │  └─ Basic analytics
+│  ├─ Pro Tier ($9.99/month or regional pricing)
+│  │  ├─ 1000 tokens/day
+│  │  ├─ Unlimited research queries
+│  │  ├─ Community posting (5 posts/day)
+│  │  ├─ Email support
+│  │  ├─ Advanced analytics
+│  │  └─ Custom tags & collections
+│  └─ Premium Tier ($29.99/month or regional pricing)
+│     ├─ Unlimited tokens
+│     ├─ Unlimited everything
+│     ├─ Priority support (24h response)
+│     ├─ API access
+│     ├─ Batch research processing
+│     └─ Custom branding on exports
+├─ Payment Integration
+│  ├─ Integrate Stripe (global payments)
+│  ├─ Alternative: Razorpay (India/Asia focus)
+│  ├─ PCI compliance via hosted checkout
+│  ├─ Support: Credit cards, UPI, PayPal
+│  ├─ Webhook handlers for payment events
+│  ├─ Automatic invoice generation
+│  └─ Failed payment retry logic
+├─ API Endpoints
+│  ├─ POST /api/subscription/create-checkout (Stripe session)
+│  ├─ GET /api/subscription/current (get user's subscription)
+│  ├─ POST /api/subscription/upgrade
+│  ├─ POST /api/subscription/downgrade
+│  ├─ POST /api/subscription/cancel (with grace period)
+│  ├─ GET /api/subscription/plans (list all tiers)
+│  ├─ POST /api/payments/webhook (Stripe/Razorpay webhooks)
+│  ├─ GET /api/invoices (billing history)
+│  └─ GET /api/subscription/usage (current usage vs limits)
+├─ Frontend UI
+│  ├─ Pricing page with tier comparison
+│  ├─ Upgrade/downgrade modal
+│  ├─ Subscription settings page
+│  ├─ Billing history & invoices
+│  ├─ Payment method management
+│  ├─ Renewal reminders
+│  └─ Feature unlock notifications
+└─ Business Logic
+   ├─ Auto-renewal 3 days before expiry
+   ├─ Grace period for failed payments (7 days)
+   ├─ Downgrade on next billing cycle
+   ├─ Regional pricing support (USD, EUR, INR, etc.)
+   └─ Promo code/coupon system
+
+### 3.2 Newsletter System
+├─ Database Schema
+│  ├─ Create NewsletterSubscriber model (email, isActive, subscribedAt, tags)
+│  ├─ Create Newsletter model (title, content, sentAt, recipientCount)
+│  ├─ Create EmailLog model (email, type, status, sentAt)
+│  └─ Create EmailTemplate model (for design consistency)
+├─ Email Service Setup
+│  ├─ Choose provider: Resend (recommended), SendGrid, or Nodemailer
+│  ├─ Setup email templates (welcome, weekly digest, announcement)
+│  ├─ Configure sender domain with SPF/DKIM
+│  ├─ Setup unsubscribe links (CAN-SPAM compliance)
+│  └─ Track email opens & clicks
+├─ Subscription Management
+│  ├─ Optional newsletter opt-in on signup
+│  ├─ One-click unsubscribe in emails
+│  ├─ Frequency preferences (weekly, monthly, urgent only)
+│  ├─ Topic preferences (research tips, community highlights, features)
+│  └─ Preference center for subscribers
+├─ Newsletter Content
+│  ├─ Weekly digest (popular research, community posts)
+│  ├─ Feature announcements
+│  ├─ Tips & tutorials
+│  ├─ Community highlights
+│  └─ Personalized recommendations
+├─ API Endpoints
+│  ├─ POST /api/newsletter/subscribe
+│  ├─ POST /api/newsletter/unsubscribe
+│  ├─ GET /api/newsletter/preferences
+│  ├─ PUT /api/newsletter/preferences (update)
+│  ├─ POST /api/newsletter/send (admin only)
+│  └─ GET /api/newsletter/stats (admin only)
+├─ Frontend UI
+│  ├─ Newsletter signup form (footer + dedicated page)
+│  ├─ Subscription preferences page
+│  ├─ Admin: Newsletter composer & scheduler
+│  └─ Admin: Analytics & delivery stats
+└─ Automation
+   ├─ Scheduled weekly digest (every Monday 9 AM)
+   ├─ Triggered emails (welcome, password reset)
+   └─ Auto-clean bounced emails
+
+### 3.3 Community Features (Posting & Commenting)
+├─ Database Schema
+│  ├─ Create Post model (userId, title, content, createdAt, updatedAt, likes, views)
+│  ├─ Create Comment model (postId, userId, content, createdAt, likes)
+│  ├─ Create Like model (userId, postId/commentId, type)
+│  ├─ Create PostTag model (post tags for categorization)
+│  ├─ Create ModerationLog model (for moderation tracking)
+│  └─ Add indexes for fast queries (userId, createdAt, etc.)
+├─ Post Features
+│  ├─ Create posts with title + rich text content
+│  ├─ Add tags/categories (Research, News, Question, Discussion)
+│  ├─ Support markdown formatting
+│  ├─ Upload images/media (with file size limits)
+│  ├─ Edit own posts (with version history)
+│  ├─ Delete own posts (soft delete for archives)
+│  ├─ Pin posts (moderator only)
+│  ├─ Lock posts (prevent comments)
+│  └─ Featured posts rotation
+├─ Comment Features
+│  ├─ Nested replies (up to 2 levels: comment → reply)
+│  ├─ @mention notifications
+│  ├─ Quote replies (reference previous comments)
+│  ├─ Edit comments (within 5 minutes)
+│  ├─ Delete comments (soft delete)
+│  └─ Emoji reactions (👍 ❤️ 😂 🔥)
+├─ Social Features
+│  ├─ Like posts & comments
+│  ├─ Follow users (optional)
+│  ├─ Save/bookmark posts
+│  ├─ Share posts (Twitter, Facebook, copy link)
+│  ├─ User profiles with contribution stats
+│  └─ Badges/reputation system (optional)
+├─ Moderation & Safety
+│  ├─ Report inappropriate content
+│  ├─ Content moderation queue
+│  ├─ Auto-flag spam (duplicate content, short lifespan accounts)
+│  ├─ Moderation dashboard (admin only)
+│  ├─ Ban users for violations
+│  ├─ Appeal process for bans
+│  └─ Community guidelines
+├─ API Endpoints
+│  ├─ POST /api/posts (create post)
+│  ├─ GET /api/posts (list with pagination, filters, sorting)
+│  ├─ GET /api/posts/:id (get post detail with comments)
+│  ├─ PUT /api/posts/:id (edit post)
+│  ├─ DELETE /api/posts/:id (delete post)
+│  ├─ POST /api/posts/:id/like (like post)
+│  ├─ DELETE /api/posts/:id/like (unlike)
+│  ├─ POST /api/posts/:id/comments (add comment)
+│  ├─ PUT /api/posts/:id/comments/:commentId (edit comment)
+│  ├─ DELETE /api/posts/:id/comments/:commentId (delete comment)
+│  ├─ POST /api/posts/:id/comments/:commentId/reply (nested reply)
+│  ├─ POST /api/posts/:id/save (bookmark)
+│  ├─ POST /api/posts/:id/report (report content)
+│  ├─ GET /api/community/trending (trending posts)
+│  ├─ GET /api/community/my-posts (user's posts)
+│  └─ GET /api/users/:userId/profile (user profile)
+├─ Frontend Components
+│  ├─ Community feed page (with infinite scroll)
+│  ├─ Post creation modal/page
+│  ├─ Post detail view with comments thread
+│  ├─ User profile page
+│  ├─ Search & filter (by tag, date, popularity)
+│  ├─ Comment notification center
+│  ├─ Admin: Moderation dashboard
+│  └─ Responsive design for mobile
+└─ Performance & Analytics
+   ├─ Track: posts count, comments count, engagement metrics
+   ├─ Cache trending posts (hourly refresh)
+   ├─ Pagination for scalability
+   ├─ Database query optimization
+   └─ Monitor: response times, error rates
+
+---
+
+## PHASE 4: UI/UX IMPROVEMENTS [MEDIUM PRIORITY]
+
+### 4.1 Design System Enhancements
+├─ Visual Design
+│  ├─ Update color palette (neutral, modern)
+│  ├─ Consistent typography scale
+│  ├─ Spacing & layout guidelines
+│  ├─ Shadow & depth effects
+│  ├─ Border radius consistency
+│  └─ Icon library (consistent style)
+├─ Component Library Audit
+│  ├─ Review existing UI components
+│  ├─ Update button variants (primary, secondary, ghost, danger)
+│  ├─ Create form components (input, select, checkbox, radio)
+│  ├─ Create card components (consistent spacing)
+│  ├─ Create modal/dialog components
+│  ├─ Create loading skeletons
+│  ├─ Create toast/notification system
+│  └─ Create breadcrumb navigation
+├─ Theme Support
+│  ├─ Implement dark/light mode toggle
+│  ├─ Persist theme preference
+│  ├─ System preference detection
+│  ├─ Smooth theme transitions
+│  └─ Ensure WCAG contrast compliance
+├─ Responsive Design
+│  ├─ Mobile-first approach (320px+)
+│  ├─ Tablet responsive (768px+)
+│  ├─ Desktop optimized (1024px+)
+│  ├─ Hamburger menu for mobile nav
+│  ├─ Touch-friendly interactions (44px+ tap targets)
+│  └─ Test on real devices
+├─ Accessibility (WCAG 2.1 AA)
+│  ├─ Semantic HTML structure
+│  ├─ Proper heading hierarchy
+│  ├─ ARIA labels & roles
+│  ├─ Keyboard navigation support
+│  ├─ Focus indicators visible
+│  ├─ Color contrast ratios (4.5:1 for text)
+│  ├─ Alt text for images
+│  └─ Screen reader testing
+└─ Animation & Microinteractions
+   ├─ Subtle loading spinners
+   ├─ Hover feedback on interactive elements
+   ├─ Page transitions
+   ├─ Form validation feedback
+   ├─ Success/error animations
+   └─ Avoid seizure-inducing effects
+
+### 4.2 Generic Tone & Language Update
+├─ Content Audit
+│  ├─ Remove all islamic-specific language/references
+│  ├─ Review all UI copy for religious bias
+│  ├─ Update brand messaging to be inclusive
+│  ├─ Check marketing materials
+│  └─ Audit error messages & notifications
+├─ Inclusive Language
+│  ├─ Use gender-neutral pronouns
+│  ├─ Avoid idioms that reference specific cultures
+│  ├─ Be respectful to all beliefs
+│  ├─ Use "people" instead of specific groups
+│  ├─ Neutral greetings (avoid "Assalamu Alaikum")
+│  └─ Review all logos/imagery for religious symbols
+├─ Research Topic Freedom
+│  ├─ Allow researching: politics, religion, controversial topics
+│  ├─ Support positive, negative, and neutral research
+│  ├─ Add content warnings for sensitive topics (optional)
+│  ├─ Promote critical thinking & multiple perspectives
+│  ├─ Add educational disclaimer
+│  └─ No biased filtering based on ideology
+└─ Localization Prep
+   ├─ Structure for i18n (internationalization)
+   ├─ Support multiple languages (English first, then others)
+   ├─ Regional pricing & currencies
+   ├─ RTL language support (optional, for future)
+   └─ Date/time localization
+
+---
+
+## PHASE 5: DEPLOYMENT & DEVOPS [CRITICAL - FINAL]
+
+### 5.1 Pre-Deployment Checklist
+├─ Security
+│  ├─ [ ] Environment variables secured (no secrets in code)
+│  ├─ [ ] HTTPS/SSL enabled
+│  ├─ [ ] CORS configured correctly
+│  ├─ [ ] Rate limiting on all public endpoints
+│  ├─ [ ] SQL injection prevention (via ORM)
+│  ├─ [ ] XSS protection (CSP headers)
+│  ├─ [ ] CSRF tokens on form submissions
+│  ├─ [ ] Password hashing verified (bcrypt)
+│  ├─ [ ] Secrets rotation policy
+│  └─ [ ] Security headers configured (HSTS, X-Frame-Options, etc.)
+├─ Performance
+│  ├─ [ ] Database indexes optimized
+│  ├─ [ ] API response times < 200ms (p95)
+│  ├─ [ ] Frontend bundle size analyzed & optimized
+│  ├─ [ ] Images optimized (WebP format)
+│  ├─ [ ] Caching strategy implemented (Redis/CDN)
+│  ├─ [ ] Database connection pooling configured
+│  └─ [ ] Load testing completed (1000+ concurrent users)
+├─ Testing
+│  ├─ [ ] Unit tests (80%+ coverage on critical paths)
+│  ├─ [ ] Integration tests for API endpoints
+│  ├─ [ ] E2E tests for user flows (authentication, research, payment)
+│  ├─ [ ] Manual QA on staging
+│  └─ [ ] Cross-browser testing (Chrome, Firefox, Safari, Edge)
+├─ Data & Backups
+│  ├─ [ ] Database backups automated (daily)
+│  ├─ [ ] Backup restoration tested
+│  ├─ [ ] Migration scripts tested on prod-like environment
+│  ├─ [ ] Data retention policy defined
+│  └─ [ ] GDPR compliance (data export, deletion)
+└─ Documentation
+   ├─ [ ] API documentation (Swagger/OpenAPI)
+   ├─ [ ] Deployment runbook created
+   ├─ [ ] Incident response procedures
+   ├─ [ ] Environment variables documented
+   └─ [ ] Known issues & workarounds listed
+
+### 5.2 Deployment Platforms
+├─ Recommended: Vercel (Next.js optimized)
+│  ├─ Benefits: Zero-config, automatic deployments, edge functions
+│  ├─ Database: Vercel Postgres or external (Supabase, AWS RDS)
+│  ├─ Environment: Automatic staging deployments from branches
+│  ├─ Monitoring: Built-in analytics & error tracking
+│  ├─ Cost: Free tier available, pay-as-you-go
+│  └─ Setup: Push to GitHub → Auto deploy
+├─ Alternative: Railway
+│  ├─ Benefits: Simple, Postgres included, good for startups
+│  ├─ Database: Native PostgreSQL support
+│  ├─ Environment: Multiple environments (dev, staging, prod)
+│  └─ Setup: Connect GitHub repo → Deploy
+├─ Alternative: Render
+│  ├─ Benefits: Free tier, simple, good uptime
+│  ├─ Database: PostgreSQL managed
+│  ├─ Auto-deploy from GitHub
+│  └─ Good for learning & prototypes
+└─ Self-hosted: Docker + VPS (Advanced)
+   ├─ Use DigitalOcean, Linode, or AWS EC2
+   ├─ Containerize with Docker
+   ├─ Orchestrate with Docker Compose or Kubernetes
+   ├─ Setup CI/CD pipeline (GitHub Actions)
+   └─ Manual server management required
+
+### 5.3 Deployment Process
+├─ Environment Setup
+│  ├─ Production environment variables
+│  ├─ Database connection strings (PostgreSQL)
+│  ├─ API keys (Stripe, Resend, LLM providers)
+│  ├─ JWT secrets
+│  └─ CORS whitelist
+├─ Database Migrations
+│  ├─ Run: `npx prisma migrate deploy`
+│  ├─ Verify schema applied
+│  ├─ Check indexes created
+│  └─ Backup before migration
+├─ CI/CD Pipeline (GitHub Actions)
+│  ├─ Trigger: Push to main branch
+│  ├─ Steps:
+│  │  ├─ Install dependencies
+│  │  ├─ Run linting (ESLint)
+│  │  ├─ Run tests
+│  │  ├─ Build Next.js app
+│  │  ├─ Deploy to Vercel/Railway
+│  │  └─ Run smoke tests
+│  └─ Notify on success/failure
+├─ Rollback Plan
+│  ├─ Database: Use migrations rollback
+│  ├─ Code: Revert to previous GitHub commit
+│  ├─ Documents: How to rollback specific components
+│  └─ Testing: Verify rollback before deploying
+└─ Post-Deployment
+   ├─ Health check endpoints
+   ├─ Monitor error rates
+   ├─ Check database connectivity
+   ├─ Verify email sending works
+   ├─ Test payment processing
+   └─ Monitor performance metrics
+
+---
+
+## TESTING STRATEGY
+
+### Unit Tests
+├─ Redux reducers & selectors
+├─ Utility functions
+├─ Validation schemas
+└─ Component logic (non-UI)
+
+### Integration Tests
+├─ API endpoints (auth, research, payments)
+├─ Database operations
+├─ External service integrations (Stripe, email)
+└─ Authentication flows
+
+### End-to-End Tests
+├─ User signup & login flow
+├─ Complete research workflow
+├─ Subscription purchase flow
+├─ Community posting & commenting
+└─ Critical error recovery
+
+---
+
+## TECHNICAL STACK SUMMARY
+
+Frontend:
+- Framework: Next.js 15+
+- State: Redux Toolkit + React Context
+- UI: Tailwind CSS + custom component library
+- Forms: React Hook Form + Zod validation
+- HTTP: fetch API / axios with interceptors
+
+Backend:
+- Runtime: Node.js
+- ORM: Prisma
+- Database: PostgreSQL
+- Auth: Better Auth
+- API: REST (Next.js route handlers)
+
+External Services:
+- Payments: Stripe (or Razorpay)
+- Email: Resend (or SendGrid/Nodemailer)
+- LLM: OpenAI / Claude / Custom API
+- Storage: AWS S3 / Vercel Blob (for images/files)
+
+DevOps:
+- Deployment: Vercel (recommended)
+- Database: Vercel Postgres / Supabase
+- Monitoring: Vercel Analytics / Sentry
+- CI/CD: GitHub Actions
+
+---
+
+## SUCCESS METRICS
+
+✅ Authentication: 99.9% uptime, <100ms auth response
+✅ Research: <500ms response time, 95% success rate
+✅ Community: <50ms feed load time, 100+ daily active users
+✅ Payments: 99.99% transaction success, <30 second checkout
+✅ Performance: Lighthouse score 90+
+✅ User Retention: 40%+ weekly active users
+✅ Conversion: 10%+ free to paid conversion rate
+
+═══════════════════════════════════════════════════════════════════════════
 
