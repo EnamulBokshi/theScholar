@@ -2,27 +2,23 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import GoogleButton from '@/components/google-button';
+import { signIn } from '@/lib/auth-client';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Sign in failed');
-      router.push('/');
+     const {error, data}= await signIn.email({email, password})
+     if(error){
+       setError('Invalid email or password');
+     }
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {

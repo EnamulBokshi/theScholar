@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import GoogleButton from '@/components/google-button';
+import { signUp } from '@/lib/auth-client';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -15,14 +16,12 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Sign up failed');
-      router.push('/');
+      const {error, data} = await signUp.email({email, password, name: email.split('@')[0]});
+      if(error){
+        setError('Failed to sign up: ' + error.message);
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
