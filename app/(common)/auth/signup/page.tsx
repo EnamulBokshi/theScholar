@@ -28,9 +28,13 @@ export default function SignupPage() {
       });
 
       if (error) {
-        setError("Failed to sign up: " + error.message);
+        if (error.code === "USER_ALREADY_EXISTS") {
+          setError("This email is already exists.");
+        } else {
+          setError(error.message || "Failed to sign up");
+        }
       } else {
-        router.push("/");
+        router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
       }
     } catch (err: any) {
       setError(err?.message ?? String(err));

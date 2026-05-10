@@ -14,8 +14,10 @@ import { signOut, useSession } from '@/lib/auth-client';
 
 const navItems = [
   { label: 'Home', href: '/' },
+  { label: 'Chat', href: '/chat' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Policy', href: '/policy' },
+
 ];
 
 function getInitials(name?: string | null, email?: string | null) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   MessageSquare,
   Plus,
@@ -10,7 +10,6 @@ import {
   Trash2,
   Menu,
   X,
-  Phone,
   Mic,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -26,7 +25,7 @@ interface Chat {
   id: string;
   title: string;
   messages: Message[];
-  createdAt: number;
+  createdAt: number | string;
   loading?: boolean;
 }
 
@@ -40,30 +39,71 @@ function ChatPageContent() {
   const [showVoiceChat, setShowVoiceChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
+  const router = useRouter();
 
-  // Load chats from localStorage on mount and check for URL param
+  // Load chats from DB and fallback to localStorage on mount
   useEffect(() => {
-    const savedChats = localStorage.getItem('scholarChats');
-    if (savedChats) {
-      const parsedChats = JSON.parse(savedChats);
-      setChats(parsedChats);
-      
-      // Check if there's a chat ID in the URL
-      const urlChatId = searchParams.get('id');
-      if (urlChatId && parsedChats.find((c: Chat) => c.id === urlChatId)) {
-        setCurrentChatId(urlChatId);
-        
-        // Check if this chat needs AI response
-        const targetChat = parsedChats.find((c: Chat) => c.id === urlChatId);
-        if (targetChat && targetChat.loading && targetChat.messages.length === 1) {
-          // Fetch AI response
-          fetchAIResponse(urlChatId, targetChat.messages[0].content);
+    const loadChats = async () => {
+      // 1. Try fetching from DB
+      try {
+        const response = await fetch('/api/chats');
+        if (response.ok) {
+          const dbChats = await response.json();
+          if (dbChats.length > 0) {
+            setChats(dbChats.map((c: any) => ({
+              ...c,
+              messages: [], // Messages will be fetched on selection
+              createdAt: new Date(c.createdAt).getTime()
+            })));
+            
+            const urlChatId = searchParams.get('id');
+            if (urlChatId) {
+              setCurrentChatId(urlChatId);
+              fetchChatHistory(urlChatId);
+            } else {
+              setCurrentChatId(dbChats[0].id);
+              fetchChatHistory(dbChats[0].id);
+            }
+            return; // Successfully loaded from DB
+          }
         }
-      } else if (parsedChats.length > 0) {
-        setCurrentChatId(parsedChats[0].id);
+      } catch (err) {
+        console.error("DB load failed, falling back to localStorage", err);
       }
-    }
+
+      // 2. Fallback to localStorage if DB is empty or failed
+      const savedChats = localStorage.getItem('scholarChats');
+      if (savedChats) {
+        const parsedChats = JSON.parse(savedChats);
+        setChats(parsedChats);
+        const urlChatId = searchParams.get('id');
+        if (urlChatId && parsedChats.find((c: Chat) => c.id === urlChatId)) {
+          setCurrentChatId(urlChatId);
+        } else if (parsedChats.length > 0) {
+          setCurrentChatId(parsedChats[0].id);
+        }
+      }
+    };
+
+    loadChats();
   }, [searchParams]);
+
+  const fetchChatHistory = async (chatId: string) => {
+    // Only fetch if it's likely a DB ID (not a timestamp from localStorage)
+    if (chatId.length < 15) return; 
+
+    try {
+      const response = await fetch(`/api/chats/${chatId}`);
+      if (response.ok) {
+        const fullChat = await response.json();
+        setChats(prev => prev.map(c => 
+          c.id === chatId ? { ...c, messages: fullChat.messages } : c
+        ));
+      }
+    } catch (err) {
+      console.error("Failed to fetch chat history", err);
+    }
+  };
 
   // Fetch AI response for a chat
   const fetchAIResponse = async (chatId: string, userMessage: string) => {
@@ -78,7 +118,8 @@ function ChatPageContent() {
         },
         body: JSON.stringify({
           message: userMessage,
-          conversationHistory: [],
+          chatId: chatId.length > 15 ? chatId : undefined, // Only send if it's a DB ID
+          conversationHistory: [], // Server will fetch from DB if chatId is provided
         }),
       });
 
@@ -107,14 +148,11 @@ function ChatPageContent() {
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to get response from The Scholar';
       setError(errorMessage);
-      
-      // Remove loading flag even on error
       setChats((prevChats) =>
         prevChats.map((chat) =>
           chat.id === chatId ? { ...chat, loading: false } : chat
         )
       );
-      console.error('Error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +173,32 @@ function ChatPageContent() {
     return chats.find((chat) => chat.id === currentChatId);
   };
 
-  const createNewChat = () => {
+  const createNewChat = async () => {
+    // Try to create in DB first
+    try {
+      const response = await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'New Chat' })
+      });
+      if (response.ok) {
+        const newChat = await response.json();
+        const formattedChat: Chat = {
+          id: newChat.id,
+          title: newChat.title,
+          messages: [],
+          createdAt: new Date(newChat.createdAt).getTime()
+        };
+        setChats([formattedChat, ...chats]);
+        setCurrentChatId(newChat.id);
+        setError(null);
+        return;
+      }
+    } catch (err) {
+      console.error("DB chat creation failed, using local only", err);
+    }
+
+    // Fallback to local
     const newChat: Chat = {
       id: Date.now().toString(),
       title: 'New Chat',
@@ -147,7 +210,16 @@ function ChatPageContent() {
     setError(null);
   };
 
-  const deleteChat = (chatId: string) => {
+  const deleteChat = async (chatId: string) => {
+    // Try delete from DB
+    if (chatId.length > 15) {
+      try {
+        await fetch(`/api/chats/${chatId}`, { method: 'DELETE' });
+      } catch (err) {
+        console.error("Failed to delete chat from DB", err);
+      }
+    }
+
     const updatedChats = chats.filter((chat) => chat.id !== chatId);
     setChats(updatedChats);
     if (currentChatId === chatId) {
@@ -175,15 +247,11 @@ function ChatPageContent() {
 
     // Create new chat if none exists
     if (!chatId) {
-      const newChat: Chat = {
-        id: Date.now().toString(),
-        title: 'New Chat',
-        messages: [],
-        createdAt: Date.now(),
-      };
-      setChats([newChat, ...chats]);
-      chatId = newChat.id;
-      setCurrentChatId(chatId);
+      await createNewChat();
+      // Refetch chatId after creation (local state is updated in createNewChat)
+      // Note: setChats is async, but we can't easily wait for it.
+      // So we'll just handle it in a way that respects the current logic.
+      return; 
     }
 
     const userMessage = prompt.trim();
@@ -192,9 +260,9 @@ function ChatPageContent() {
 
     // Add user message to current chat
     const currentChat = chats.find((chat) => chat.id === chatId);
-    const updatedMessages = [
+    const updatedMessages: Message[] = [
       ...(currentChat?.messages || []),
-      { role: 'user' as const, content: userMessage },
+      { role: 'user', content: userMessage },
     ];
 
     setChats((prevChats) =>
@@ -219,7 +287,8 @@ function ChatPageContent() {
         },
         body: JSON.stringify({
           message: userMessage,
-          conversationHistory: updatedMessages.slice(0, -1),
+          chatId: chatId.length > 15 ? chatId : undefined,
+          conversationHistory: chatId.length > 15 ? [] : updatedMessages.slice(0, -1),
         }),
       });
 
@@ -247,7 +316,6 @@ function ChatPageContent() {
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to get response from The Scholar';
       setError(errorMessage);
-      console.error('Error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -256,47 +324,54 @@ function ChatPageContent() {
   const currentChat = getCurrentChat();
 
   return (
-    <div className='flex h-screen bg-background'>
+    <div className='flex h-[calc(100vh-64px)] bg-background overflow-hidden relative'>
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? 'w-64' : 'w-0'
-        } transition-all duration-300 bg-card border-r border-border overflow-hidden flex flex-col`}
+        } border-r border-border bg-card transition-all duration-300 flex flex-col overflow-hidden absolute lg:relative z-20 h-full`}
       >
         <div className='p-4 border-b border-border'>
           <button
             onClick={createNewChat}
-            className='w-full flex items-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity'
+            className='w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium'
           >
-            <Plus className='w-5 h-5' />
-            <span className='font-medium'>New Chat</span>
+            <Plus className='w-4 h-4' />
+            <span>New Chat</span>
           </button>
         </div>
 
         <div className='flex-1 overflow-y-auto p-2'>
           {chats.length === 0 ? (
-            <div className='text-center text-muted-foreground text-sm py-8'>
-              No chats yet. Start a new conversation!
+            <div className='text-center py-8 text-muted-foreground px-4'>
+              <p className='text-sm italic font-medium'>No chats yet.</p>
+              <p className='text-xs mt-1'>
+                Start a conversation to see your history here.
+              </p>
             </div>
           ) : (
             chats.map((chat) => (
               <div
                 key={chat.id}
-                className={`group flex items-center gap-2 p-3 rounded-lg cursor-pointer mb-1 transition-colors ${
+                className={`group flex items-center gap-2 p-3 rounded-lg mb-1 cursor-pointer transition-colors ${
                   currentChatId === chat.id
-                    ? 'bg-muted'
-                    : 'hover:bg-muted/50'
+                    ? 'bg-primary/10 text-primary'
+                    : 'hover:bg-muted'
                 }`}
-                onClick={() => setCurrentChatId(chat.id)}
+                onClick={() => {
+                  setCurrentChatId(chat.id);
+                  if (chat.messages.length === 0) fetchChatHistory(chat.id);
+                  if (window.innerWidth < 1024) setSidebarOpen(false);
+                }}
               >
-                <MessageSquare className='w-4 h-4 shrink-0 text-muted-foreground' />
-                <span className='flex-1 text-sm truncate'>{chat.title}</span>
+                <MessageSquare className='w-4 h-4 shrink-0' />
+                <span className='text-sm truncate flex-1'>{chat.title}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteChat(chat.id);
                   }}
-                  className='opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-opacity'
+                  className='opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/10 rounded transition-all'
                 >
                   <Trash2 className='w-4 h-4 text-destructive' />
                 </button>
@@ -333,7 +408,6 @@ function ChatPageContent() {
             className='flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity'
             title='Start Voice Conversation'
           >
-            {/* <Phone className='w-4 h-4' /> */}
             <Mic className='w-4 h-4' />
             <span className='hidden sm:inline'>Talk </span>
           </button>
@@ -400,56 +474,52 @@ function ChatPageContent() {
                   </div>
                 </div>
               )}
+              {error && (
+                <div className='mb-6 flex justify-center'>
+                  <div className='bg-destructive/10 text-destructive text-sm px-4 py-2 rounded-lg border border-destructive/20'>
+                    {error}
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           )}
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className='mx-4 mb-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm'>
-            {error}
-          </div>
-        )}
-
         {/* Input Area */}
-        <div className='border-t border-border p-4'>
-          <form onSubmit={handleSubmit} className='max-w-4xl mx-auto'>
-            <div className='relative'>
-              <input
-                type='text'
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder='Ask The Scholar anything about religion...'
-                disabled={isLoading}
-                className='w-full px-4 py-3 pr-12 rounded-xl bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
-              />
-              <button
-            onClick={() => setShowVoiceChat(true)}
-            className='absolute right-12 cursor-pointer text-black/50 hover:text-violet-400 top-1/2 -translate-y-1/2 p-2 rounded-lg  hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed'
-            title='Start Voice Conversation'
+        <div className='p-4 border-t border-border'>
+          <form
+            onSubmit={handleSubmit}
+            className='max-w-4xl mx-auto relative flex items-center gap-2'
           >
-            {/* <Phone className='w-4 h-4' /> */}
-            <Mic className='w-4 h-4' />
-            {/* <span className='hidden sm:inline'>Talk </span> */}
-          </button>
-              <button
-                type='submit'
-                disabled={isLoading || !prompt.trim()}
-                className='absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed'
-              >
-                {isLoading ? (
-                  <Loader2 className='w-5 h-5 animate-spin' />
-                ) : (
-                  <Send className='w-5 h-5' />
-                )}
-              </button>
-            </div>
+            <input
+              type='text'
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder='Ask about religion, scriptures, history...'
+              className='flex-1 bg-muted border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-12'
+              disabled={isLoading}
+            />
+            <button
+              type='submit'
+              disabled={isLoading || !prompt.trim()}
+              className='absolute right-2 p-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all'
+            >
+              {isLoading ? (
+                <Loader2 className='w-5 h-5 animate-spin' />
+              ) : (
+                <Send className='w-5 h-5' />
+              )}
+            </button>
           </form>
+          <p className='text-[10px] text-center mt-2 text-muted-foreground'>
+            AI responses can vary. Please consult primary sources and scholars
+            for critical matters.
+          </p>
         </div>
       </div>
 
-      {/* Voice Chat Modal */}
+      {/* Voice Chat Component */}
       {showVoiceChat && (
         <VoiceChat onClose={() => setShowVoiceChat(false)} />
       )}
@@ -459,14 +529,13 @@ function ChatPageContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={
-      <div className='flex h-screen items-center justify-center bg-background'>
-        <div className='flex flex-col items-center gap-4'>
+    <Suspense
+      fallback={
+        <div className='flex items-center justify-center h-screen'>
           <Loader2 className='w-8 h-8 animate-spin text-primary' />
-          <p className='text-muted-foreground'>Loading chat...</p>
         </div>
-      </div>
-    }>
+      }
+    >
       <ChatPageContent />
     </Suspense>
   );

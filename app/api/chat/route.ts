@@ -1,5 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import prisma from "@/lib/prisma";
 
 // Initialize the Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
@@ -46,7 +49,11 @@ Remember: your purpose is to help users understand religion through clear explan
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationHistory } = await request.json();
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    const { message, chatId, conversationHistory } = await request.json();
 
     // Validate input
     if (!message || typeof message !== 'string') {
@@ -64,6 +71,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Initialize context from DB if chatId is provided and session is active
+    let dbHistory = [];
+    if (chatId && session) {
+      // Fetch existing messages if not provided by client
+      if (!conversationHistory || conversationHistory.length === 0) {
+        const chat = await prisma.chat.findUnique({
+          where: { id: chatId, userId: session.user.id },
+          include: { messages: { orderBy: { createdAt: 'asc' } } }
+        });
+        if (chat) {
+          dbHistory = chat.messages.map(m => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content
+          }));
+        }
+      } else {
+        dbHistory = conversationHistory;
+      }
+    } else {
+      dbHistory = conversationHistory || [];
+    }
+
     // Initialize the model
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.5-flash',
@@ -71,14 +100,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Build conversation history for context
-    let conversationContext = '';
-    if (conversationHistory && Array.isArray(conversationHistory)) {
-      conversationContext = conversationHistory
-        .map((msg: { role: string; content: string }) => 
-          `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
-        )
-        .join('\n\n');
-    }
+    let conversationContext = dbHistory
+      .map((msg: { role: string; content: string }) => 
+        `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
+      )
+      .join('\n\n');
 
     // Combine context with current message
     const fullPrompt = conversationContext 
@@ -90,6 +116,27 @@ export async function POST(request: NextRequest) {
     const response = result.response;
     const text = response.text();
 
+    // Save to DB if chatId and session exist
+    if (chatId && session) {
+      try {
+        await prisma.chat.update({
+          where: { id: chatId, userId: session.user.id },
+          data: {
+            messages: {
+              create: [
+                { role: 'user', content: message },
+                { role: 'assistant', content: text },
+              ],
+            },
+            updatedAt: new Date(),
+          },
+        });
+      } catch (dbError) {
+        console.error("Failed to save messages to DB:", dbError);
+        // We continue anyway as the response was generated
+      }
+    }
+
     return NextResponse.json({ 
       response: text,
       success: true 
@@ -97,11 +144,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Error generating response:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause
-    });
     
     // Handle specific errors
     if (error.message?.includes('API key') || error.message?.includes('API_KEY_INVALID')) {

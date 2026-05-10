@@ -18,9 +18,19 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await signIn.email({ email, password });
-      if (error) setError('Invalid email or password');
-      else router.push('/');
+      const { data, error } = await signIn.email({ email, password });
+      
+      if (error) {
+        // Better Auth error handling
+        if (error.status === 403 || error.code === "EMAIL_NOT_VERIFIED") {
+          router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+        } else {
+          setError(error.message || 'Invalid email or password');
+        }
+      } else {
+        router.push('/');
+        router.refresh();
+      }
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
