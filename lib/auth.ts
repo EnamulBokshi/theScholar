@@ -14,6 +14,7 @@ import transporter from "./mailTransport";
 const isProduction = process.env.NODE_ENV === "production";
 
 export const auth = betterAuth({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   database: prismaAdapter(prisma, { provider: "postgresql" }),
 
   user: {

@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown, LayoutDashboard, LogOut, LogIn, Menu, Sparkles, ShieldCheck, UserPlus } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogOut, LogIn, Menu, MoonStar, Sparkles, SunMedium, ShieldCheck, UserPlus } from 'lucide-react';
 import * as Avatar from '@radix-ui/react-avatar';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -31,11 +33,17 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const user = session?.user;
   const isLoggedIn = Boolean(user);
   const isAdmin = ((user as { role?: string } | undefined)?.role ?? '').toUpperCase() === 'ADMIN';
   const initials = getInitials(user?.name, user?.email);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function handleSignOut() {
     await signOut();
@@ -88,6 +96,19 @@ export default function Header() {
           </nav>
 
           <div className='flex items-center gap-3'>
+            <button
+              type='button'
+              aria-label='Toggle dark mode'
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              className='flex size-10 items-center justify-center rounded-full border border-white/25 bg-white/60 shadow-[0_12px_35px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:bg-white/10 dark:hover:bg-white/15'
+            >
+              {mounted && resolvedTheme === 'dark' ? (
+                <SunMedium className='size-4 text-foreground' />
+              ) : (
+                <MoonStar className='size-4 text-foreground' />
+              )}
+            </button>
+
             {isPending ? (
               <div className='h-10 w-28 rounded-full border border-white/20 bg-white/40 backdrop-blur-md dark:bg-white/5' />
             ) : isLoggedIn && user ? (

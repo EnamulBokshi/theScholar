@@ -18,51 +18,55 @@ interface Plan {
   accentBg: string;
   buttonClass: string;
   glowClass?: string;
+  ctaLabel: string;
 }
 
 const PLANS: Plan[] = [
   {
-    id: "personal",
-    name: "Personal",
+    id: "free",
+    name: "Free",
     price: null,
-    description: "For personal use and exploration",
+    description: "For curious learners exploring the platform",
     features: [
-      { text: "Unlimited access" },
-      { text: "Chat support" },
-      { text: "Up to 5 Members" },
-    ],
-    accentColor: "var(--palette-mint)",
-    accentBg: "rgba(138, 203, 208, 0.15)",
-    buttonClass: "btn-mint",
-  },
-  {
-    id: "mini-team",
-    name: "Mini Team",
-    price: 35,
-    description: "The best for mini teams to manage",
-    features: [
-      { text: "Unlimited access" },
-      { text: "Chat support" },
-      { text: "Up to 25 Members" },
+      { text: "Core chat experience" },
+      { text: "Limited daily questions" },
+      { text: "Access to public content" },
     ],
     accentColor: "var(--palette-cyan)",
     accentBg: "rgba(86, 182, 198, 0.15)",
     buttonClass: "btn-cyan",
-    glowClass: "glow-cyan",
+    ctaLabel: "Start free",
   },
   {
-    id: "company",
-    name: "Company",
-    price: 60,
-    description: "Best choice for your growing team",
+    id: "plus",
+    name: "Scholar Plus",
+    price: 12,
+    description: "For regular study, voice sessions, and saved history",
     features: [
-      { text: "Unlimited access" },
-      { text: "Chat support & AI" },
-      { text: "Unlimited Members" },
+      { text: "Unlimited chat access" },
+      { text: "Voice conversation support" },
+      { text: "Saved conversations and favorites" },
+    ],
+    accentColor: "var(--palette-mint)",
+    accentBg: "rgba(138, 203, 208, 0.15)",
+    buttonClass: "btn-cyan",
+    glowClass: "glow-cyan",
+    ctaLabel: "Choose Plus",
+  },
+  {
+    id: "institution",
+    name: "Institution",
+    price: 60,
+    description: "For schools, study groups, and admin-managed workspaces",
+    features: [
+      { text: "Admin dashboard access" },
+      { text: "Multi-user workspace support" },
+      { text: "Custom policy and onboarding help" },
     ],
     accentColor: "var(--palette-cream)",
     accentBg: "rgba(239, 227, 202, 0.1)",
     buttonClass: "btn-cream",
+    ctaLabel: "Contact sales",
   },
 ];
 
@@ -149,7 +153,7 @@ function PricingCard({
       </ul>
 
       <button className={`purchase-btn ${plan.buttonClass}`}>
-        Get Started
+        {plan.ctaLabel}
       </button>
 
       <style jsx>{`
@@ -348,13 +352,13 @@ export default function PricingPlans() {
       <div className="pricing-container">
         {/* Header */}
         <header className="pricing-header">
-          <p className="pricing-eyebrow">Simple pricing</p>
+          <p className="pricing-eyebrow">Choose your access</p>
           <h1 className="pricing-title">
-            Choose the plan{" "}
-            <span className="pricing-title-muted">that fits your needs</span>
+            Pick the plan that fits{" "}
+            <span className="pricing-title-muted">your learning style</span>
           </h1>
           <p className="pricing-subtitle">
-            Scale your team's performance with the right tools
+            Start free, upgrade for voice and saved study history, or add an admin-managed workspace.
           </p>
         </header>
 
