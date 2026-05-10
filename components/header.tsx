@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function Header() {
   return (
@@ -12,10 +13,14 @@ export default function Header() {
         </div>
 
         <div className='flex items-center gap-3'>
-          <Button variant='outline' size='sm'>
-            Sign in
-          </Button>
-          <Button size='sm'>Sign up</Button>
+          <Link href="/auth/login">
+            <Button variant='outline' size='sm'>
+              Sign in
+            </Button>
+          </Link>
+          <Link href="/auth/signup">
+            <Button size='sm'>Sign up</Button>
+          </Link>
         </div>
       </div>
     </header>
