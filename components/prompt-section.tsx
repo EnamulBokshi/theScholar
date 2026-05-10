@@ -103,15 +103,14 @@ export default function PromptSection() {
   
 
   return (
-    <section className='w-full py-16 md:py-24 px-4 bg-linear-to-b from-background to-background/50'>
+    <section className='w-full py-16 md:py-24 px-4'>
       <div className='max-w-3xl mx-auto'>
         <div className='text-center mb-12'>
-          <h1 className='text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance'>
+          <h1 className='text-5xl md:text-6xl font-bold text-foreground mb-6 text-balance leading-tight'>
             Ask any religious question
           </h1>
-          <p className='text-muted-foreground'>
-            Use voice or click a topic below to start exploring religious
-            knowledge.
+          <p className='text-lg text-muted-foreground'>
+            Explore faith, tradition, and meaning with The Scholar
           </p>
         </div>
 
@@ -124,7 +123,7 @@ export default function PromptSection() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder='Ask The Scholar anything...'
               disabled={isLoading}
-              className='w-full px-6 py-4 pr-24 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+              className='w-full px-6 py-4 pr-24 rounded-2xl bg-card border border-border/40 shadow-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed'
             />
             <button
               type='button'
@@ -142,12 +141,12 @@ export default function PromptSection() {
             <button
               type='submit'
               disabled={isLoading || !prompt.trim()}
-              className='absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-muted rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+              className='absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-lg transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed'
             >
               {isLoading ? (
-                <Loader2 className='w-5 h-5 animate-spin text-muted-foreground' />
+                <Loader2 className='w-5 h-5 animate-spin' />
               ) : (
-                <Send className='w-5 h-5 text-muted-foreground hover:text-foreground' />
+                <Send className='w-5 h-5' />
               )}
             </button>
           </div>
@@ -161,13 +160,13 @@ export default function PromptSection() {
         </form>
 
         {/* Religious Question Shortcuts */}
-        <div className='mt-8 flex flex-wrap items-center justify-center gap-2'>
+        <div className='mt-12 flex flex-wrap items-center justify-center gap-2'>
           {religiousPrompts.map((question, index) => (
             <button
               key={index}
               onClick={() => setPrompt(question)}
               disabled={isLoading}
-              className='px-4 py-2 rounded-full text-sm border border-border hover:bg-muted transition-colors text-foreground disabled:opacity-50 disabled:cursor-not-allowed'
+              className='px-4 py-2 rounded-full text-sm border border-border/40 hover:border-accent/50 hover:bg-accent/8 transition-all text-foreground disabled:opacity-50 disabled:cursor-not-allowed'
             >
               {question}
             </button>
@@ -175,10 +174,10 @@ export default function PromptSection() {
         </div>
 
         {/* Voice Call Button */}
-        <div className='mt-6 text-center'>
+        <div className='mt-12 text-center'>
           <button
             onClick={() => setShowVoiceChat(true)}
-            className='inline-flex items-center gap-2 px-6 py-3 bg-linear-to-r from-primary to-primary/80 text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium shadow-lg'
+            className='inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-primary-foreground rounded-full hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-semibold'
           >
             <Phone className='w-5 h-5' />
             Start Voice Conversation

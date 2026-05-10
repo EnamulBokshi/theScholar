@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Libre_Baskerville } from 'next/font/google';
 import './globals.css';
+import { ThemeProvider } from '@/components/theme-provider';
 
 const libreBaskerville = Libre_Baskerville({
   variable: '--font-libre-baskerville',
@@ -21,9 +22,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en'>
+    <html lang='en' suppressHydrationWarning>
       <body className={`${libreBaskerville.className} antialiased`}>
-        {children}
+        <ThemeProvider>
+          
+          {children}
+          </ThemeProvider>
       </body>
     </html>
   );

@@ -81,10 +81,14 @@ const contentItems: ContentItem[] = [
 
 export default function ContentGrid() {
   return (
-    <section className='w-full py-16 px-4 bg-background'>
+    <section className='w-full py-20 px-4 bg-background'>
       <div className='max-w-7xl mx-auto'>
+        <div className='text-center mb-16'>
+          <h2 className='text-3xl font-bold text-foreground mb-2'>Explore Resources</h2>
+          <p className='text-muted-foreground'>Discover tools to deepen your understanding</p>
+        </div>
         {/* Category Filter */}
-        <div className='flex flex-wrap justify-center gap-3 mb-10'>
+        <div className='flex flex-wrap justify-center gap-3 mb-16'>
           {[
             'All',
             'Comparative Religion',
@@ -94,7 +98,7 @@ export default function ContentGrid() {
           ].map((category) => (
             <button
               key={category}
-              className='px-6 py-2.5 rounded-full text-sm border border-border text-foreground hover:bg-primary/10 hover:text-primary transition-all font-medium'
+              className='px-5 py-2 rounded-full text-sm border border-border/40 text-foreground hover:border-accent/50 hover:bg-accent/8 transition-all font-medium'
             >
               {category}
             </button>
@@ -106,13 +110,13 @@ export default function ContentGrid() {
           {contentItems.map((item) => (
             <div
               key={item.id}
-              className='group p-12 rounded-2xl border border-border bg-card hover:border-primary/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between'
+              className='group p-8 rounded-2xl border border-border/40 bg-card hover:border-accent/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between'
             >
               <div className='flex flex-col items-center text-center space-y-4'>
-                <div className='text-primary bg-primary/10 p-5 rounded-full'>
+                <div className='text-accent bg-accent/12 p-5 rounded-full group-hover:bg-accent/18 transition-colors'>
                   {item.icon}
                 </div>
-                <h3 className='text-xl font-semibold text-foreground group-hover:text-primary transition-colors'>
+                <h3 className='text-lg font-semibold text-foreground group-hover:text-accent transition-colors'>
                   {item.title}
                 </h3>
                 <p className='text-sm text-muted-foreground'>{item.category}</p>
@@ -123,7 +127,7 @@ export default function ContentGrid() {
 
         {/* Explore More */}
         <div className='mt-16 text-center'>
-          <button className='text-primary hover:text-primary/80 transition-colors font-semibold text-lg'>
+          <button className='text-accent hover:text-accent/80 transition-colors font-semibold text-lg'>
             Explore More Features →
           </button>
         </div>
